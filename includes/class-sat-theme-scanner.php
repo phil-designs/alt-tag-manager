@@ -169,6 +169,12 @@ class SAT_Theme_Scanner {
 	/**
 	 * Scans a single file for problematic <img> tags.
 	 *
+	 * PHP blocks (<?php ... ?> and <?= ... ?>) are replaced with a safe
+	 * placeholder before matching so that '>' characters inside PHP expressions
+	 * (e.g. alt="<?php esc_attr_e('Label'); ?>") don't prematurely terminate
+	 * the <img … > regex. Line counts are preserved so reported line numbers
+	 * remain accurate, and snippets are pulled from the original source.
+	 *
 	 * @param string $filepath Absolute path to the file.
 	 * @return array           Array of issue arrays (may be empty).
 	 */
@@ -178,27 +184,36 @@ class SAT_Theme_Scanner {
 			return array();
 		}
 
-		$issues = array();
+		// Replace every PHP block with __PHPEXPR__, preserving newline count
+		// so that line numbers in the cleaned string still match the original.
+		$cleaned = preg_replace_callback(
+			'/<\?(?:php|=).*?\?>/si',
+			function ( $m ) {
+				return str_repeat( "\n", substr_count( $m[0], "\n" ) ) . '__PHPEXPR__';
+			},
+			$content
+		);
 
-		/**
-		 * Match <img …> tags including those that span multiple lines.
-		 *
-		 * [^>]* stops at the next > so it correctly handles self-closing tags.
-		 * The `i` flag makes the match case-insensitive.
-		 */
-		if ( ! preg_match_all( '/<img\b[^>]*>/i', $content, $matches, PREG_OFFSET_CAPTURE ) ) {
+		$issues     = array();
+		$orig_lines = explode( "\n", $content );
+
+		if ( ! preg_match_all( '/<img\b[^>]*>/i', $cleaned, $matches, PREG_OFFSET_CAPTURE ) ) {
 			return array();
 		}
 
 		foreach ( $matches[0] as $match ) {
-			$tag    = $match[0];
-			$offset = $match[1];
+			$cleaned_tag = $match[0];
+			$offset      = $match[1];
 
-			// Derive the 1-based line number from the character offset.
-			$line_num = substr_count( substr( $content, 0, $offset ), "\n" ) + 1;
+			// Derive the 1-based line number from the cleaned content offset.
+			$line_num = substr_count( substr( $cleaned, 0, $offset ), "\n" ) + 1;
 
-			$issue = $this->classify_tag( $tag, $line_num );
+			$issue = $this->classify_tag( $cleaned_tag, $line_num );
 			if ( null !== $issue ) {
+				// Replace the placeholder-based snippet with the original source.
+				$issue['snippet'] = $this->make_snippet(
+					$this->extract_original_tag( $orig_lines, $line_num )
+				);
 				$issues[] = $issue;
 			}
 		}
@@ -207,9 +222,26 @@ class SAT_Theme_Scanner {
 	}
 
 	/**
-	 * Returns an issue descriptor for a given <img> tag, or null if no issue.
+	 * Extracts the original <img> tag from the source lines starting at
+	 * $line_num. Looks ahead up to 5 lines to handle multi-line tags.
 	 *
-	 * @param string $tag      The raw <img …> string.
+	 * @param string[] $orig_lines Lines of the original file content.
+	 * @param int      $line_num   1-based line number.
+	 * @return string
+	 */
+	private function extract_original_tag( $orig_lines, $line_num ) {
+		$chunk = implode( ' ', array_slice( $orig_lines, $line_num - 1, 5 ) );
+		if ( preg_match( '/<img\b.*?>/si', $chunk, $m ) ) {
+			return $m[0];
+		}
+		return $orig_lines[ $line_num - 1 ] ?? '';
+	}
+
+	/**
+	 * Returns an issue descriptor for a given <img> tag, or null if no issue.
+	 * The $tag passed here has PHP blocks replaced with __PHPEXPR__.
+	 *
+	 * @param string $tag      The cleaned <img …> string.
 	 * @param int    $line_num Line number in the source file.
 	 * @return array|null
 	 */
@@ -223,7 +255,6 @@ class SAT_Theme_Scanner {
 				'type'     => 'missing',
 				'label'    => 'Missing alt',
 				'line'     => $line_num,
-				'snippet'  => $this->make_snippet( $tag ),
 			);
 		}
 
@@ -235,23 +266,23 @@ class SAT_Theme_Scanner {
 				'type'     => 'empty',
 				'label'    => 'Empty alt',
 				'line'     => $line_num,
-				'snippet'  => $this->make_snippet( $tag ),
 			);
 		}
 
-		// ── Notice: alt value is a bare PHP expression with no static fallback ─
-		// Matches alt attributes whose only content is a PHP echo block.
-		if ( preg_match( '/\balt\s*=\s*(["\'])\s*<\?php[^?]*(?:\?(?!>)[^?]*)?\?>\s*\1/i', $tag ) ) {
+		// ── Notice: alt value is a pure PHP expression ────────────────────────
+		// After preprocessing, PHP blocks become __PHPEXPR__. If the alt value
+		// contains only that placeholder (no surrounding static text) it means
+		// the alt is entirely dynamic and may resolve to empty at runtime.
+		if ( preg_match( '/\balt\s*=\s*(["\'])\s*__PHPEXPR__\s*\1/i', $tag ) ) {
 			return array(
 				'severity' => 'notice',
 				'type'     => 'dynamic',
 				'label'    => 'Dynamic alt (may be empty)',
 				'line'     => $line_num,
-				'snippet'  => $this->make_snippet( $tag ),
 			);
 		}
 
-		return null; // Tag has an alt attribute with static content — no issue.
+		return null; // Tag has a non-empty static (or mixed) alt — no issue.
 	}
 
 	/**

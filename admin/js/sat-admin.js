@@ -11,6 +11,10 @@
 		bulkCancelled: false,
 	};
 
+	var theme = {
+		ignoredCount: 0,
+	};
+
 	// ── Init ──────────────────────────────────────────────────────────────────
 	$(function () {
 		bindTabs();
@@ -391,6 +395,64 @@
 		$('#sat-theme-results').on('click', '.sat-file-header', function () {
 			$(this).closest('.sat-file-group').toggleClass('sat-collapsed');
 		});
+
+		// Mark as Resolved
+		$('#sat-theme-results').on('click', '.sat-ignore-btn', function () {
+			var $btn       = $(this);
+			var key        = $btn.data('key');
+			var $issue     = $btn.closest('.sat-issue');
+			var $fileGroup = $issue.closest('.sat-file-group');
+
+			$btn.prop('disabled', true);
+
+			$.post(SAT.ajaxUrl, {
+				action: 'sat_ignore_theme_issue',
+				nonce: SAT.nonce,
+				key: key,
+				ignore_action: 'add'
+			}, function (res) {
+				if (res.success) {
+					$issue.addClass('sat-fade-out');
+					setTimeout(function () {
+						$issue.remove();
+						// If the file group is now empty, remove it too
+						if ($fileGroup.find('.sat-issue').length === 0) {
+							$fileGroup.addClass('sat-fade-out');
+							setTimeout(function () { $fileGroup.remove(); }, 380);
+						}
+						theme.ignoredCount++;
+						updateThemeIgnoredInfo();
+					}, 380);
+				} else {
+					$btn.prop('disabled', false);
+				}
+			}).fail(function () {
+				$btn.prop('disabled', false);
+			});
+		});
+
+		// Reset all ignored issues
+		$('#sat-clear-ignored-btn').on('click', function () {
+			$.post(SAT.ajaxUrl, {
+				action: 'sat_clear_ignored_theme',
+				nonce: SAT.nonce
+			}, function (res) {
+				if (res.success) {
+					theme.ignoredCount = 0;
+					updateThemeIgnoredInfo();
+					loadThemeScan(false); // reload from cache (scanner re-filters)
+				}
+			});
+		});
+	}
+
+	function updateThemeIgnoredInfo() {
+		if (theme.ignoredCount > 0) {
+			$('#sat-ignored-count').text(theme.ignoredCount);
+			$('#sat-ignored-info').show();
+		} else {
+			$('#sat-ignored-info').hide();
+		}
 	}
 
 	// ── Load (or force-rescan) theme results ─────────────────────────────────
@@ -426,6 +488,10 @@
 	function renderThemeResults(data) {
 		var $results = $('#sat-theme-results');
 		var total    = data.total_issues || 0;
+
+		// Track server-side ignored count (issues already filtered out)
+		theme.ignoredCount = data.ignored_count || 0;
+		updateThemeIgnoredInfo();
 
 		// Update counts
 		$('#sat-theme-count').text(total);
@@ -476,10 +542,14 @@
 
 			html += '<div class="sat-file-issues">';
 			$.each(issues, function (i, issue) {
+				var key = escAttr(filePath + '::' + issue.line);
 				html += '<div class="sat-issue sat-issue--' + esc(issue.severity) + '">';
 				html += '<span class="sat-issue-line">Line ' + parseInt( issue.line, 10 ) + '</span>';
 				html += '<span class="sat-badge sat-badge--' + esc(issue.severity) + '">' + esc(issue.label) + '</span>';
 				html += '<code class="sat-issue-snippet">' + esc(issue.snippet) + '</code>';
+				html += '<button class="button button-small sat-ignore-btn" data-key="' + key + '" title="Hide this issue from the list">';
+				html += '<span class="dashicons dashicons-hidden"></span> Mark as Resolved';
+				html += '</button>';
 				html += '</div>';
 			});
 			html += '</div>'; // .sat-file-issues

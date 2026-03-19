@@ -34,8 +34,12 @@ class Search_Alt_Tags {
 		add_action( 'wp_ajax_sat_scan_theme',        array( $this, 'ajax_scan_theme' ) );
 		add_action( 'wp_ajax_sat_rescan_theme',      array( $this, 'ajax_rescan_theme' ) );
 		add_action( 'wp_ajax_sat_save_settings',     array( $this, 'ajax_save_settings' ) );
-		add_action( 'wp_ajax_sat_get_summary',         array( $this, 'ajax_get_summary' ) );
-		add_action( 'wp_ajax_sat_get_all_media_ids',   array( $this, 'ajax_get_all_media_ids' ) );
+		add_action( 'wp_ajax_sat_get_summary',              array( $this, 'ajax_get_summary' ) );
+		add_action( 'wp_ajax_sat_get_all_media_ids',        array( $this, 'ajax_get_all_media_ids' ) );
+		add_action( 'wp_ajax_sat_ignore_theme_issue',       array( $this, 'ajax_ignore_theme_issue' ) );
+		add_action( 'wp_ajax_sat_clear_ignored_theme',      array( $this, 'ajax_clear_ignored_theme' ) );
+		add_action( 'admin_post_sat_export_media_csv',      array( $this, 'export_media_csv' ) );
+		add_action( 'admin_post_sat_export_theme_csv',      array( $this, 'export_theme_csv' ) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -142,9 +146,15 @@ class Search_Alt_Tags {
 		$theme_scanner = new SAT_Theme_Scanner();
 		$theme_result  = $theme_scanner->get_cached_results();
 
+		$theme_total = null;
+		if ( $theme_result ) {
+			$filtered    = $this->apply_ignore_filter( $theme_result );
+			$theme_total = $filtered['total_issues'];
+		}
+
 		wp_send_json_success( array(
 			'media_total'   => $media_result['total'],
-			'theme_total'   => $theme_result ? $theme_result['total_issues'] : null,
+			'theme_total'   => $theme_total,
 			'theme_scanned' => $theme_result ? $theme_result['scanned_at'] : null,
 		) );
 	}
@@ -257,7 +267,7 @@ class Search_Alt_Tags {
 		$scanner = new SAT_Theme_Scanner();
 		$results = $scanner->get_results(); // uses cache if available
 
-		wp_send_json_success( $results );
+		wp_send_json_success( $this->apply_ignore_filter( $results ) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -273,7 +283,7 @@ class Search_Alt_Tags {
 		$scanner->clear_cache();
 		$results = $scanner->get_results();
 
-		wp_send_json_success( $results );
+		wp_send_json_success( $this->apply_ignore_filter( $results ) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -290,6 +300,160 @@ class Search_Alt_Tags {
 
 		wp_send_json_success( array( 'message' => __( 'Settings saved.', 'search-alt-tags' ) ) );
 	}
+	// -------------------------------------------------------------------------
+	// AJAX — ignore / clear ignored theme issues
+	// -------------------------------------------------------------------------
+	public function ajax_ignore_theme_issue() {
+		check_ajax_referer( 'sat_nonce', 'nonce' );
+		if ( ! current_user_can( 'upload_files' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'search-alt-tags' ) ) );
+		}
+
+		$key    = isset( $_POST['key'] )           ? sanitize_text_field( wp_unslash( $_POST['key'] ) )           : '';
+		$action = isset( $_POST['ignore_action'] ) ? sanitize_text_field( wp_unslash( $_POST['ignore_action'] ) ) : 'add';
+
+		if ( empty( $key ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid key.', 'search-alt-tags' ) ) );
+		}
+
+		$ignored = get_option( 'sat_ignored_theme_issues', array() );
+
+		if ( 'remove' === $action ) {
+			unset( $ignored[ $key ] );
+		} else {
+			$ignored[ $key ] = true;
+		}
+
+		update_option( 'sat_ignored_theme_issues', $ignored, false );
+		wp_send_json_success( array( 'key' => $key, 'action' => $action ) );
+	}
+
+	public function ajax_clear_ignored_theme() {
+		check_ajax_referer( 'sat_nonce', 'nonce' );
+		if ( ! current_user_can( 'upload_files' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'search-alt-tags' ) ) );
+		}
+
+		delete_option( 'sat_ignored_theme_issues' );
+		wp_send_json_success();
+	}
+
+	// -------------------------------------------------------------------------
+	// CSV exports — triggered via admin-post.php
+	// -------------------------------------------------------------------------
+	public function export_media_csv() {
+		if ( ! check_admin_referer( 'sat_export_nonce', 'nonce' ) ) {
+			wp_die( 'Invalid request.' );
+		}
+		if ( ! current_user_can( 'upload_files' ) ) {
+			wp_die( 'Insufficient permissions.' );
+		}
+
+		$scanner = new SAT_Media_Scanner();
+		$result  = $scanner->get_images_missing_alt( 1, PHP_INT_MAX );
+
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="missing-alt-tags-media-' . gmdate( 'Y-m-d' ) . '.csv"' );
+		header( 'Pragma: no-cache' );
+
+		$out = fopen( 'php://output', 'w' );
+		fputcsv( $out, array( 'ID', 'Filename', 'URL', 'Dimensions', 'File Size', 'Date Uploaded' ) );
+
+		foreach ( $result['images'] as $img ) {
+			fputcsv( $out, array(
+				$img['id'],
+				$img['filename'],
+				$img['full_url'],
+				$img['dimensions'],
+				$img['file_size'],
+				$img['date'],
+			) );
+		}
+
+		fclose( $out );
+		exit;
+	}
+
+	public function export_theme_csv() {
+		if ( ! check_admin_referer( 'sat_export_nonce', 'nonce' ) ) {
+			wp_die( 'Invalid request.' );
+		}
+		if ( ! current_user_can( 'upload_files' ) ) {
+			wp_die( 'Insufficient permissions.' );
+		}
+
+		$scanner = new SAT_Theme_Scanner();
+		$results = $scanner->get_cached_results() ?: $scanner->get_results();
+		$results = $this->apply_ignore_filter( $results );
+
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="theme-alt-tag-issues-' . gmdate( 'Y-m-d' ) . '.csv"' );
+		header( 'Pragma: no-cache' );
+
+		$out = fopen( 'php://output', 'w' );
+		fputcsv( $out, array( 'File', 'Line', 'Severity', 'Issue Type', 'Snippet' ) );
+
+		foreach ( $results['files'] as $file => $issues ) {
+			foreach ( $issues as $issue ) {
+				fputcsv( $out, array(
+					$file,
+					$issue['line'],
+					$issue['severity'],
+					$issue['label'],
+					$issue['snippet'],
+				) );
+			}
+		}
+
+		fclose( $out );
+		exit;
+	}
+
+	// -------------------------------------------------------------------------
+	// Helper — filter ignored issues out of theme scan results
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Removes entries the user has marked as resolved and appends an
+	 * 'ignored_count' key to the result array.
+	 *
+	 * @param array $results Raw results from SAT_Theme_Scanner.
+	 * @return array
+	 */
+	private function apply_ignore_filter( $results ) {
+		$ignored_keys  = get_option( 'sat_ignored_theme_issues', array() );
+		$ignored_count = 0;
+
+		foreach ( $results['files'] as $file => &$issues ) {
+			$issues = array_values( array_filter( $issues, function ( $issue ) use ( $file, $ignored_keys, &$ignored_count ) {
+				if ( isset( $ignored_keys[ $file . '::' . $issue['line'] ] ) ) {
+					$ignored_count++;
+					return false;
+				}
+				return true;
+			} ) );
+
+			if ( empty( $issues ) ) {
+				unset( $results['files'][ $file ] );
+			}
+		}
+		unset( $issues );
+
+		$results['total_issues'] = max( 0, $results['total_issues'] - $ignored_count );
+		$results['ignored_count'] = $ignored_count;
+
+		// Recount per-severity totals.
+		$counts = array( 'error' => 0, 'warning' => 0, 'notice' => 0 );
+		foreach ( $results['files'] as $issues ) {
+			foreach ( $issues as $issue ) {
+				$counts[ $issue['severity'] ]++;
+			}
+		}
+		$results['counts'] = $counts;
+
+		return $results;
+	}
+
 	// -------------------------------------------------------------------------
 	// Helpers — update <img> alt attributes in post content
 	// -------------------------------------------------------------------------

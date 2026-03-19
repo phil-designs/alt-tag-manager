@@ -396,6 +396,49 @@
 
 .sat-error-msg { color: #d63638; padding: 16px 0; font-size: 13px; }
 
+/* ── Theme panel toolbar left group ──────────────────────────────────────── */
+.sat-panel-toolbar-left {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0;
+}
+
+.sat-ignored-info {
+	font-size: 12px;
+	color: #8c8f94;
+}
+
+.sat-clear-ignored-btn {
+	color: #2271b1;
+	text-decoration: underline;
+	cursor: pointer;
+	font-size: 12px;
+}
+
+.sat-clear-ignored-btn:hover { color: #135e96; }
+
+/* ── Mark as Resolved button ─────────────────────────────────────────────── */
+.sat-ignore-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	margin-left: auto;
+	flex-shrink: 0;
+	font-size: 11px;
+	color: #646970;
+}
+
+.sat-ignore-btn .dashicons {
+	font-size: 13px;
+	width: 13px;
+	height: 13px;
+	line-height: 1;
+	vertical-align: middle;
+}
+
+.sat-ignore-btn:hover { color: #1d2327; }
+
 /* ── Settings page ────────────────────────────────────────────────────────── */
 .sat-api-key-row {
 	display: flex;

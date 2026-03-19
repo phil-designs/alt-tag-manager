@@ -72,6 +72,10 @@ $theme_name = wp_get_theme()->get( 'Name' );
 						<?php esc_html_e( 'AI Generate All', 'search-alt-tags' ); ?>
 					</button>
 					<?php endif; ?>
+					<a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=sat_export_media_csv' ), 'sat_export_nonce', 'nonce' ) ); ?>">
+						<span class="dashicons dashicons-download"></span>
+						<?php esc_html_e( 'Export CSV', 'search-alt-tags' ); ?>
+					</a>
 					<button id="sat-rescan-media-btn" class="button">
 						<span class="dashicons dashicons-update"></span>
 						<?php esc_html_e( 'Rescan Media', 'search-alt-tags' ); ?>
@@ -119,9 +123,20 @@ $theme_name = wp_get_theme()->get( 'Name' );
 		<div class="sat-panel" id="sat-panel-theme" role="tabpanel" aria-labelledby="sat-tab-theme" hidden>
 
 			<div class="sat-panel-toolbar">
-				<span class="sat-panel-count" id="sat-theme-panel-count"></span>
+				<div class="sat-panel-toolbar-left">
+					<span class="sat-panel-count" id="sat-theme-panel-count"></span>
+					<span class="sat-ignored-info" id="sat-ignored-info" style="display:none;">
+						&nbsp;·&nbsp;
+						<span id="sat-ignored-count"></span> ignored
+						&nbsp;<button id="sat-clear-ignored-btn" class="button-link sat-clear-ignored-btn"><?php esc_html_e( 'Reset', 'search-alt-tags' ); ?></button>
+					</span>
+				</div>
 				<div class="sat-panel-toolbar-right">
 					<span class="sat-scan-time" id="sat-scan-time"></span>
+					<a class="button" id="sat-export-theme-csv" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=sat_export_theme_csv' ), 'sat_export_nonce', 'nonce' ) ); ?>">
+						<span class="dashicons dashicons-download"></span>
+						<?php esc_html_e( 'Export CSV', 'search-alt-tags' ); ?>
+					</a>
 					<button id="sat-rescan-theme-btn" class="button">
 						<span class="dashicons dashicons-update"></span>
 						<?php esc_html_e( 'Rescan Theme', 'search-alt-tags' ); ?>
