@@ -1,6 +1,6 @@
 # Alt Tag Manager
 
-Tags: jQuery, javascript, php
+Tags: javascript, php
 Requires at least: 3.6.0
 Tested up to: 6.9.1
 License: GPL2
