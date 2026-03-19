@@ -1,0 +1,428 @@
+/* ==========================================================================
+   Search Alt Tags — Admin Styles
+   ========================================================================== */
+
+.sat-wrap { max-width: 1200px; }
+
+.sat-api-notice { margin-top: 12px; }
+
+/* ── Summary bar ──────────────────────────────────────────────────────────── */
+.sat-summary-bar {
+	display: flex;
+	align-items: center;
+	gap: 0;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 14px 20px;
+	margin: 16px 0 0;
+	box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+
+.sat-summary-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.sat-summary-icon {
+	font-size: 20px;
+	width: 20px;
+	height: 20px;
+	color: #2271b1;
+	flex-shrink: 0;
+}
+
+.sat-summary-count {
+	font-size: 22px;
+	font-weight: 700;
+	line-height: 1;
+	color: #1d2327;
+	min-width: 24px;
+}
+
+.sat-summary-label {
+	font-size: 13px;
+	color: #646970;
+}
+
+.sat-summary-divider {
+	width: 1px;
+	height: 36px;
+	background: #dcdcde;
+	margin: 0 24px;
+}
+
+.sat-summary-spacer { flex: 1; }
+
+.sat-rescan-all-btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	margin-right: 4px;
+	vertical-align: text-top;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+.sat-tabs-wrap {
+	margin-top: 16px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.sat-tabs {
+	display: flex;
+	border-bottom: 1px solid #dcdcde;
+	background: #f6f7f7;
+	margin: 0;
+	padding: 0;
+	gap: 0;
+}
+
+.sat-tab {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 12px 20px;
+	background: none;
+	border: none;
+	border-bottom: 3px solid transparent;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 400;
+	color: #646970;
+	transition: color .15s, border-color .15s;
+	margin-bottom: -1px;
+}
+
+.sat-tab:hover { color: #1d2327; }
+
+.sat-tab--active {
+	color: #1d2327;
+	font-weight: 600;
+	border-bottom-color: #2271b1;
+	background: #fff;
+}
+
+.sat-tab .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+}
+
+.sat-tab-badge {
+	display: inline-block;
+	background: #d63638;
+	color: #fff;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1;
+	padding: 2px 6px;
+	border-radius: 10px;
+	min-width: 18px;
+	text-align: center;
+}
+
+.sat-tab-badge:empty { display: none; }
+
+/* ── Panels ───────────────────────────────────────────────────────────────── */
+.sat-panel { padding: 16px 20px 20px; }
+.sat-panel[hidden] { display: none; }
+
+/* ── Panel toolbar ────────────────────────────────────────────────────────── */
+.sat-panel-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 12px;
+	gap: 8px;
+}
+
+.sat-panel-toolbar-right {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.sat-panel-count {
+	font-size: 13px;
+	color: #646970;
+}
+
+.sat-panel-toolbar .button .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+	margin-right: 3px;
+	vertical-align: text-top;
+}
+
+.sat-scan-time {
+	font-size: 12px;
+	color: #999;
+	font-style: italic;
+}
+
+/* ── Media table ──────────────────────────────────────────────────────────── */
+.sat-media-table { border-collapse: collapse; }
+
+.sat-col-thumb   { width: 80px; }
+.sat-col-file    { width: 24%; }
+.sat-col-alt     { /* flexible */ }
+.sat-col-actions { width: 210px; white-space: nowrap; }
+
+.sat-thumb {
+	display: block;
+	width: 60px;
+	height: 60px;
+	object-fit: cover;
+	border-radius: 3px;
+	border: 1px solid #dcdcde;
+	background: #f0f0f1;
+}
+
+.sat-filename {
+	display: block;
+	margin-bottom: 4px;
+	word-break: break-all;
+}
+
+.sat-file-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 10px;
+	font-size: 11px;
+	color: #8c8f94;
+}
+
+.sat-alt-input { width: 100%; box-sizing: border-box; }
+
+.sat-status {
+	display: inline-block;
+	font-size: 12px;
+	font-style: italic;
+	margin-left: 4px;
+}
+.sat-status.sat-ok    { color: #00a32a; }
+.sat-status.sat-error { color: #d63638; }
+
+.sat-col-actions .button {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	margin-bottom: 4px;
+}
+
+.sat-col-actions .button .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+}
+
+/* loading / empty rows */
+.sat-loading-row { text-align: center; padding: 24px; color: #646970; }
+.sat-loading-row .spinner { float: none; margin: 0 6px -4px 0; }
+
+.sat-empty {
+	text-align: center;
+	padding: 32px 16px;
+	font-size: 14px;
+	color: #3c434a;
+}
+.sat-empty .dashicons {
+	font-size: 26px;
+	color: #00a32a;
+	vertical-align: middle;
+	margin-right: 6px;
+}
+
+/* ── Bulk progress ────────────────────────────────────────────────────────── */
+.sat-bulk-progress {
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 12px 16px;
+	margin-bottom: 12px;
+}
+
+.sat-progress-bar-wrap {
+	background: #dcdcde;
+	border-radius: 20px;
+	height: 10px;
+	overflow: hidden;
+}
+
+.sat-progress-bar {
+	height: 100%;
+	background: #2271b1;
+	border-radius: 20px;
+	transition: width .3s ease;
+	width: 0%;
+}
+
+.sat-progress-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 8px;
+}
+
+.sat-progress-label { font-size: 12px; color: #646970; margin: 0; }
+
+.sat-bulk-error {
+	margin-top: 8px;
+	font-size: 12px;
+	color: #d63638;
+	font-style: italic;
+}
+
+/* ── Pagination ───────────────────────────────────────────────────────────── */
+.sat-pagination {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-top: 12px;
+}
+.sat-page-info { font-size: 13px; color: #646970; }
+
+/* ── Theme scanner ────────────────────────────────────────────────────────── */
+.sat-legend {
+	font-size: 12px;
+	color: #646970;
+	margin-bottom: 12px;
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+/* Severity badges */
+.sat-badge {
+	display: inline-block;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 7px;
+	border-radius: 3px;
+	line-height: 1.4;
+	white-space: nowrap;
+}
+.sat-badge--error   { background: #ffebe8; color: #d63638; border: 1px solid #f8c9c6; }
+.sat-badge--warning { background: #fff8e5; color: #996800; border: 1px solid #f5d45e; }
+.sat-badge--notice  { background: #e8f0fb; color: #2271b1; border: 1px solid #b4c9ed; }
+
+/* File groups */
+.sat-file-group {
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	margin-bottom: 8px;
+	overflow: hidden;
+}
+
+.sat-file-header {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 14px;
+	background: #f6f7f7;
+	cursor: pointer;
+	user-select: none;
+}
+
+.sat-file-header:hover { background: #f0f0f1; }
+
+.sat-file-toggle {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+	color: #646970;
+	transition: transform .2s;
+}
+
+.sat-collapsed .sat-file-toggle { transform: rotate(-90deg); }
+.sat-collapsed .sat-file-issues { display: none; }
+
+.sat-file-path {
+	font-size: 12px;
+	flex: 1;
+	word-break: break-all;
+	background: none;
+	color: #1d2327;
+}
+
+.sat-file-badges {
+	display: flex;
+	gap: 4px;
+	flex-shrink: 0;
+}
+
+/* Issues list */
+.sat-file-issues { padding: 0; }
+
+.sat-issue {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	padding: 8px 14px;
+	border-top: 1px solid #f0f0f1;
+	flex-wrap: wrap;
+}
+
+.sat-issue:hover { background: #fafafa; }
+
+.sat-issue-line {
+	font-size: 11px;
+	color: #8c8f94;
+	white-space: nowrap;
+	min-width: 56px;
+}
+
+.sat-issue-snippet {
+	font-size: 11px;
+	background: #f0f0f1;
+	padding: 3px 7px;
+	border-radius: 3px;
+	word-break: break-all;
+	flex: 1;
+	min-width: 0;
+	color: #1d2327;
+}
+
+.sat-issue--error   .sat-issue-snippet { border-left: 3px solid #d63638; }
+.sat-issue--warning .sat-issue-snippet { border-left: 3px solid #dba617; }
+.sat-issue--notice  .sat-issue-snippet { border-left: 3px solid #2271b1; }
+
+.sat-error-msg { color: #d63638; padding: 16px 0; font-size: 13px; }
+
+/* ── Settings page ────────────────────────────────────────────────────────── */
+.sat-api-key-row {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+.sat-api-key-row input { flex: 1; }
+
+.sat-test-result { margin-left: 10px; font-weight: 600; }
+.sat-test-result.sat-ok   { color: #00a32a; }
+.sat-test-result.sat-fail { color: #d63638; }
+
+#sat-settings-spinner { float: none; margin-left: 8px; vertical-align: middle; }
+
+/* ── Animations ───────────────────────────────────────────────────────────── */
+@keyframes sat-spin {
+	to { transform: rotate(360deg); }
+}
+.sat-spin {
+	animation: sat-spin .8s linear infinite;
+	display: inline-block;
+}
+
+@keyframes sat-fade-out {
+	to { opacity: 0; transform: translateX(12px); }
+}
+.sat-fade-out {
+	animation: sat-fade-out .35s ease forwards;
+	pointer-events: none;
+}
