@@ -439,6 +439,30 @@
 
 .sat-ignore-btn:hover { color: #1d2327; }
 
+/* ── Parent theme read-only notice ───────────────────────────────────────── */
+.sat-readonly-notice {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	background: #f0f6fc;
+	border: 1px solid #b4c9ed;
+	border-radius: 4px;
+	padding: 10px 14px;
+	margin-bottom: 14px;
+	font-size: 13px;
+	color: #1d2327;
+	line-height: 1.5;
+}
+
+.sat-readonly-notice .dashicons {
+	color: #2271b1;
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+	flex-shrink: 0;
+	margin-top: 1px;
+}
+
 /* ── Settings page ────────────────────────────────────────────────────────── */
 .sat-api-key-row {
 	display: flex;

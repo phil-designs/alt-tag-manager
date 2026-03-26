@@ -15,16 +15,26 @@
 		ignoredCount: 0,
 	};
 
+	var parentTheme = {
+		ignoredCount: 0,
+	};
+
 	// ── Init ──────────────────────────────────────────────────────────────────
 	$(function () {
 		bindTabs();
 		bindMediaEvents();
 		bindThemeEvents();
+		if (SAT.hasParentTheme) {
+			bindParentThemeEvents();
+		}
 		bindRescanAll();
 
-		// Load both panels immediately
+		// Load all panels immediately
 		loadMediaPage(1);
-		loadThemeScan(false); // false = use cache if available
+		loadThemeScan(false, null, 'child');
+		if (SAT.hasParentTheme) {
+			loadThemeScan(false, null, 'parent');
+		}
 	});
 
 	// =========================================================================
@@ -52,17 +62,21 @@
 			var $btn = $(this);
 			$btn.prop('disabled', true).find('.dashicons').addClass('sat-spin');
 
-			// Run both rescans in parallel, re-enable button when both complete
-			var done = 0;
+			var expected = SAT.hasParentTheme ? 3 : 2;
+			var done     = 0;
+
 			function onDone() {
 				done++;
-				if (done >= 2) {
+				if (done >= expected) {
 					$btn.prop('disabled', false).find('.dashicons').removeClass('sat-spin');
 				}
 			}
 
 			loadMediaPage(1, onDone);
-			loadThemeScan(true, onDone); // true = force rescan
+			loadThemeScan(true, onDone, 'child');
+			if (SAT.hasParentTheme) {
+				loadThemeScan(true, onDone, 'parent');
+			}
 		});
 	}
 
@@ -384,132 +398,176 @@
 	}
 
 	// =========================================================================
-	// THEME SCANNER
+	// THEME SCANNER — child theme
 	// =========================================================================
 	function bindThemeEvents() {
 		$('#sat-rescan-theme-btn').on('click', function () {
-			loadThemeScan(true); // force rescan
+			loadThemeScan(true, null, 'child');
 		});
 
-		// Toggle file-group collapsing
 		$('#sat-theme-results').on('click', '.sat-file-header', function () {
 			$(this).closest('.sat-file-group').toggleClass('sat-collapsed');
 		});
 
-		// Mark as Resolved
 		$('#sat-theme-results').on('click', '.sat-ignore-btn', function () {
-			var $btn       = $(this);
-			var key        = $btn.data('key');
-			var $issue     = $btn.closest('.sat-issue');
-			var $fileGroup = $issue.closest('.sat-file-group');
-
-			$btn.prop('disabled', true);
-
-			$.post(SAT.ajaxUrl, {
-				action: 'sat_ignore_theme_issue',
-				nonce: SAT.nonce,
-				key: key,
-				ignore_action: 'add'
-			}, function (res) {
-				if (res.success) {
-					$issue.addClass('sat-fade-out');
-					setTimeout(function () {
-						$issue.remove();
-						// If the file group is now empty, remove it too
-						if ($fileGroup.find('.sat-issue').length === 0) {
-							$fileGroup.addClass('sat-fade-out');
-							setTimeout(function () { $fileGroup.remove(); }, 380);
-						}
-						theme.ignoredCount++;
-						updateThemeIgnoredInfo();
-					}, 380);
-				} else {
-					$btn.prop('disabled', false);
-				}
-			}).fail(function () {
-				$btn.prop('disabled', false);
-			});
+			handleIgnoreClick($(this), 'sat_ignore_theme_issue', theme, '#sat-ignored-count', '#sat-ignored-info');
 		});
 
-		// Reset all ignored issues
 		$('#sat-clear-ignored-btn').on('click', function () {
-			$.post(SAT.ajaxUrl, {
-				action: 'sat_clear_ignored_theme',
-				nonce: SAT.nonce
-			}, function (res) {
+			$.post(SAT.ajaxUrl, { action: 'sat_clear_ignored_theme', nonce: SAT.nonce },
+			function (res) {
 				if (res.success) {
 					theme.ignoredCount = 0;
-					updateThemeIgnoredInfo();
-					loadThemeScan(false); // reload from cache (scanner re-filters)
+					updateIgnoredInfo(theme.ignoredCount, '#sat-ignored-count', '#sat-ignored-info');
+					loadThemeScan(false, null, 'child');
 				}
 			});
 		});
 	}
 
-	function updateThemeIgnoredInfo() {
-		if (theme.ignoredCount > 0) {
-			$('#sat-ignored-count').text(theme.ignoredCount);
-			$('#sat-ignored-info').show();
+	// =========================================================================
+	// THEME SCANNER — parent theme
+	// =========================================================================
+	function bindParentThemeEvents() {
+		$('#sat-rescan-parent-theme-btn').on('click', function () {
+			loadThemeScan(true, null, 'parent');
+		});
+
+		$('#sat-parent-theme-results').on('click', '.sat-file-header', function () {
+			$(this).closest('.sat-file-group').toggleClass('sat-collapsed');
+		});
+
+		$('#sat-parent-theme-results').on('click', '.sat-ignore-btn', function () {
+			handleIgnoreClick($(this), 'sat_ignore_parent_theme_issue', parentTheme, '#sat-parent-ignored-count', '#sat-parent-ignored-info');
+		});
+
+		$('#sat-clear-parent-ignored-btn').on('click', function () {
+			$.post(SAT.ajaxUrl, { action: 'sat_clear_ignored_parent_theme', nonce: SAT.nonce },
+			function (res) {
+				if (res.success) {
+					parentTheme.ignoredCount = 0;
+					updateIgnoredInfo(parentTheme.ignoredCount, '#sat-parent-ignored-count', '#sat-parent-ignored-info');
+					loadThemeScan(false, null, 'parent');
+				}
+			});
+		});
+	}
+
+	// ── Shared: handle a "Mark as Resolved" click ────────────────────────────
+	function handleIgnoreClick($btn, ajaxAction, stateObj, countSel, infoSel) {
+		var key        = $btn.data('key');
+		var $issue     = $btn.closest('.sat-issue');
+		var $fileGroup = $issue.closest('.sat-file-group');
+
+		$btn.prop('disabled', true);
+
+		$.post(SAT.ajaxUrl, {
+			action: ajaxAction,
+			nonce: SAT.nonce,
+			key: key,
+			ignore_action: 'add'
+		}, function (res) {
+			if (res.success) {
+				$issue.addClass('sat-fade-out');
+				setTimeout(function () {
+					$issue.remove();
+					if ($fileGroup.find('.sat-issue').length === 0) {
+						$fileGroup.addClass('sat-fade-out');
+						setTimeout(function () { $fileGroup.remove(); }, 380);
+					}
+					stateObj.ignoredCount++;
+					updateIgnoredInfo(stateObj.ignoredCount, countSel, infoSel);
+				}, 380);
+			} else {
+				$btn.prop('disabled', false);
+			}
+		}).fail(function () {
+			$btn.prop('disabled', false);
+		});
+	}
+
+	// ── Shared: update the "X ignored · Reset" line ──────────────────────────
+	function updateIgnoredInfo(count, countSel, infoSel) {
+		if (count > 0) {
+			$(countSel).text(count);
+			$(infoSel).show();
 		} else {
-			$('#sat-ignored-info').hide();
+			$(infoSel).hide();
 		}
 	}
 
-	// ── Load (or force-rescan) theme results ─────────────────────────────────
-	function loadThemeScan(force, callback) {
-		var $results = $('#sat-theme-results');
-		var $btn     = $('#sat-rescan-theme-btn');
+	// ── Load (or force-rescan) theme results — works for both scopes ──────────
+	function loadThemeScan(force, callback, scope) {
+		scope = scope || 'child';
+		var isParent = (scope === 'parent');
 
-		$results.html('<div class="sat-loading-row"><span class="spinner is-active"></span> ' + SAT.i18n.scanning + '</div>');
-		$btn.prop('disabled', true).find('.dashicons').addClass('sat-spin');
+		var cfg = isParent ? {
+			action:       force ? 'sat_rescan_parent_theme' : 'sat_scan_parent_theme',
+			$results:     $('#sat-parent-theme-results'),
+			$btn:         $('#sat-rescan-parent-theme-btn'),
+			$summaryCount:$('#sat-parent-theme-count'),
+			$tabBadge:    $('#sat-tab-parent-theme-badge'),
+			$panelCount:  $('#sat-parent-theme-panel-count'),
+			$scanTime:    $('#sat-parent-scan-time'),
+			countSel:     '#sat-parent-ignored-count',
+			infoSel:      '#sat-parent-ignored-info',
+			stateObj:     parentTheme,
+		} : {
+			action:       force ? 'sat_rescan_theme' : 'sat_scan_theme',
+			$results:     $('#sat-theme-results'),
+			$btn:         $('#sat-rescan-theme-btn'),
+			$summaryCount:$('#sat-theme-count'),
+			$tabBadge:    $('#sat-tab-theme-badge'),
+			$panelCount:  $('#sat-theme-panel-count'),
+			$scanTime:    $('#sat-scan-time'),
+			countSel:     '#sat-ignored-count',
+			infoSel:      '#sat-ignored-info',
+			stateObj:     theme,
+		};
 
-		var action = force ? 'sat_rescan_theme' : 'sat_scan_theme';
+		cfg.$results.html('<div class="sat-loading-row"><span class="spinner is-active"></span> ' + SAT.i18n.scanning + '</div>');
+		cfg.$btn.prop('disabled', true).find('.dashicons').addClass('sat-spin');
 
-		$.post(SAT.ajaxUrl, { action: action, nonce: SAT.nonce },
+		$.post(SAT.ajaxUrl, { action: cfg.action, nonce: SAT.nonce },
 		function (res) {
-			$btn.prop('disabled', false).find('.dashicons').removeClass('sat-spin');
+			cfg.$btn.prop('disabled', false).find('.dashicons').removeClass('sat-spin');
 
 			if (!res.success) {
-				$results.html('<div class="sat-error-msg">' + esc(res.data ? res.data.message : SAT.i18n.error) + '</div>');
+				cfg.$results.html('<div class="sat-error-msg">' + esc(res.data ? res.data.message : SAT.i18n.error) + '</div>');
 				if (typeof callback === 'function') callback();
 				return;
 			}
 
-			renderThemeResults(res.data);
+			renderThemeResults(res.data, cfg);
 			if (typeof callback === 'function') callback();
 		}).fail(function () {
-			$btn.prop('disabled', false).find('.dashicons').removeClass('sat-spin');
-			$results.html('<div class="sat-error-msg">' + SAT.i18n.error + '</div>');
+			cfg.$btn.prop('disabled', false).find('.dashicons').removeClass('sat-spin');
+			cfg.$results.html('<div class="sat-error-msg">' + SAT.i18n.error + '</div>');
 			if (typeof callback === 'function') callback();
 		});
 	}
 
-	// ── Render theme scan results ─────────────────────────────────────────────
-	function renderThemeResults(data) {
-		var $results = $('#sat-theme-results');
-		var total    = data.total_issues || 0;
+	// ── Render theme scan results (shared for child and parent) ──────────────
+	function renderThemeResults(data, cfg) {
+		var total = data.total_issues || 0;
 
-		// Track server-side ignored count (issues already filtered out)
-		theme.ignoredCount = data.ignored_count || 0;
-		updateThemeIgnoredInfo();
+		cfg.stateObj.ignoredCount = data.ignored_count || 0;
+		updateIgnoredInfo(cfg.stateObj.ignoredCount, cfg.countSel, cfg.infoSel);
 
-		// Update counts
-		$('#sat-theme-count').text(total);
-		$('#sat-tab-theme-badge').text(total > 0 ? total : '');
+		cfg.$summaryCount.text(total);
+		cfg.$tabBadge.text(total > 0 ? total : '');
 
-		// Update panel header
 		var countLabel = total === 0
 			? 'No issues found'
 			: (total === 1 ? '1 issue in theme templates' : total + ' issues in theme templates');
-		$('#sat-theme-panel-count').text(countLabel);
+		cfg.$panelCount.text(countLabel);
 
-		// Scan time
 		if (data.scanned_at) {
-			$('#sat-scan-time').text('Last scanned: ' + data.scanned_at);
+			cfg.$scanTime.text('Last scanned: ' + data.scanned_at);
 		}
 
 		if (total === 0) {
-			$results.html(
+			cfg.$results.html(
 				'<div class="sat-empty"><span class="dashicons dashicons-yes-alt"></span> ' +
 				'No alt tag issues found in <strong>' + esc(data.theme_name) + '</strong> templates. ' +
 				'(' + (data.files_scanned || 0) + ' files scanned)</div>'
@@ -519,9 +577,8 @@
 
 		var html = '';
 
-		// Build one collapsible group per file
 		$.each(data.files, function (filePath, issues) {
-			var errorCount   = 0, warnCount = 0, noticeCount = 0;
+			var errorCount = 0, warnCount = 0, noticeCount = 0;
 			$.each(issues, function (i, issue) {
 				if (issue.severity === 'error')   errorCount++;
 				if (issue.severity === 'warning') warnCount++;
@@ -529,22 +586,22 @@
 			});
 
 			var badgesHtml = '';
-			if (errorCount)   badgesHtml += '<span class="sat-badge sat-badge--error">'   + errorCount   + ' error'   + (errorCount   > 1 ? 's' : '') + '</span>';
-			if (warnCount)    badgesHtml += '<span class="sat-badge sat-badge--warning">' + warnCount    + ' warning' + (warnCount    > 1 ? 's' : '') + '</span>';
-			if (noticeCount)  badgesHtml += '<span class="sat-badge sat-badge--notice">'  + noticeCount  + ' notice'  + (noticeCount  > 1 ? 's' : '') + '</span>';
+			if (errorCount)  badgesHtml += '<span class="sat-badge sat-badge--error">'   + errorCount  + ' error'   + (errorCount  > 1 ? 's' : '') + '</span>';
+			if (warnCount)   badgesHtml += '<span class="sat-badge sat-badge--warning">' + warnCount   + ' warning' + (warnCount   > 1 ? 's' : '') + '</span>';
+			if (noticeCount) badgesHtml += '<span class="sat-badge sat-badge--notice">'  + noticeCount + ' notice'  + (noticeCount > 1 ? 's' : '') + '</span>';
 
 			html += '<div class="sat-file-group">';
 			html += '<div class="sat-file-header">';
 			html += '<span class="sat-file-toggle dashicons dashicons-arrow-down-alt2"></span>';
 			html += '<code class="sat-file-path">' + esc(filePath) + '</code>';
 			html += '<span class="sat-file-badges">' + badgesHtml + '</span>';
-			html += '</div>'; // .sat-file-header
+			html += '</div>';
 
 			html += '<div class="sat-file-issues">';
 			$.each(issues, function (i, issue) {
 				var key = escAttr(filePath + '::' + issue.line);
 				html += '<div class="sat-issue sat-issue--' + esc(issue.severity) + '">';
-				html += '<span class="sat-issue-line">Line ' + parseInt( issue.line, 10 ) + '</span>';
+				html += '<span class="sat-issue-line">Line ' + parseInt(issue.line, 10) + '</span>';
 				html += '<span class="sat-badge sat-badge--' + esc(issue.severity) + '">' + esc(issue.label) + '</span>';
 				html += '<code class="sat-issue-snippet">' + esc(issue.snippet) + '</code>';
 				html += '<button class="button button-small sat-ignore-btn" data-key="' + key + '" title="Hide this issue from the list">';
@@ -552,11 +609,11 @@
 				html += '</button>';
 				html += '</div>';
 			});
-			html += '</div>'; // .sat-file-issues
-			html += '</div>'; // .sat-file-group
+			html += '</div>';
+			html += '</div>';
 		});
 
-		$results.html(html);
+		cfg.$results.html(html);
 	}
 
 	// =========================================================================

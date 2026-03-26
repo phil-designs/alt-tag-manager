@@ -14,11 +14,20 @@ if ( ! defined( 'ABSPATH' ) ) {
  *             decorative images, but flagged for review)
  *  notice  — <img> with alt containing only a PHP expression that could
  *             resolve to empty at runtime (e.g. alt="<?php echo $var; ?>")
+ *
+ * Scope
+ * -----
+ *  'child'  — scans get_stylesheet_directory() (the active / child theme)
+ *  'parent' — scans get_template_directory()   (the parent theme)
+ *
+ * When no child theme is active both directories are the same, so there is
+ * no meaningful 'parent' scope.  Use has_parent_theme() to check first.
  */
 class SAT_Theme_Scanner {
 
-	const CACHE_KEY = 'sat_theme_scan';
-	const CACHE_TTL = 43200; // 12 hours in seconds
+	const CACHE_KEY_CHILD  = 'sat_theme_scan';
+	const CACHE_KEY_PARENT = 'sat_parent_theme_scan';
+	const CACHE_TTL        = 43200; // 12 hours in seconds
 
 	/** File extensions to scan. */
 	const SCAN_EXTENSIONS = array( 'php', 'html' );
@@ -37,6 +46,48 @@ class SAT_Theme_Scanner {
 		'bower_components',
 	);
 
+	/** @var string Absolute path to the directory being scanned. */
+	private $dir;
+
+	/** @var string Transient key used for caching. */
+	private $cache_key;
+
+	/** @var bool True when scanning the parent theme. */
+	private $is_parent;
+
+	// -------------------------------------------------------------------------
+	// Constructor
+	// -------------------------------------------------------------------------
+
+	/**
+	 * @param string $scope 'child' (default) or 'parent'.
+	 */
+	public function __construct( $scope = 'child' ) {
+		$this->is_parent = ( 'parent' === $scope );
+
+		if ( $this->is_parent ) {
+			$this->dir       = get_template_directory();
+			$this->cache_key = self::CACHE_KEY_PARENT;
+		} else {
+			$this->dir       = get_stylesheet_directory();
+			$this->cache_key = self::CACHE_KEY_CHILD;
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Static helpers
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Returns true when a child theme is active (i.e. the stylesheet directory
+	 * differs from the template directory).
+	 *
+	 * @return bool
+	 */
+	public static function has_parent_theme() {
+		return get_stylesheet_directory() !== get_template_directory();
+	}
+
 	// -------------------------------------------------------------------------
 	// Public API
 	// -------------------------------------------------------------------------
@@ -47,7 +98,7 @@ class SAT_Theme_Scanner {
 	 * @return array See self::build_result_shape().
 	 */
 	public function get_results() {
-		$cached = get_transient( self::CACHE_KEY );
+		$cached = get_transient( $this->cache_key );
 		if ( false !== $cached ) {
 			return $cached;
 		}
@@ -61,7 +112,7 @@ class SAT_Theme_Scanner {
 	 * @return array|null
 	 */
 	public function get_cached_results() {
-		$cached = get_transient( self::CACHE_KEY );
+		$cached = get_transient( $this->cache_key );
 		return false !== $cached ? $cached : null;
 	}
 
@@ -69,7 +120,7 @@ class SAT_Theme_Scanner {
 	 * Deletes the cached results so the next call to get_results() rescans.
 	 */
 	public function clear_cache() {
-		delete_transient( self::CACHE_KEY );
+		delete_transient( $this->cache_key );
 	}
 
 	// -------------------------------------------------------------------------
@@ -77,13 +128,13 @@ class SAT_Theme_Scanner {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Walks the active theme directory, scans every eligible file, and caches
+	 * Walks the scoped theme directory, scans every eligible file, and caches
 	 * the results.
 	 *
 	 * @return array
 	 */
 	private function run_scan() {
-		$theme_dir = get_template_directory();
+		$theme_dir = $this->dir;
 		$files     = $this->collect_files( $theme_dir );
 		$by_file   = array();
 
@@ -91,7 +142,7 @@ class SAT_Theme_Scanner {
 			$issues = $this->scan_file( $absolute_path );
 			if ( ! empty( $issues ) ) {
 				// Store relative path so UI doesn't expose server filesystem root.
-				$relative          = str_replace( $theme_dir . DIRECTORY_SEPARATOR, '', $absolute_path );
+				$relative             = str_replace( $theme_dir . DIRECTORY_SEPARATOR, '', $absolute_path );
 				$by_file[ $relative ] = $issues;
 			}
 		}
@@ -106,17 +157,26 @@ class SAT_Theme_Scanner {
 			}
 		}
 
+		// Resolve theme name for this scope.
+		if ( $this->is_parent ) {
+			$parent     = wp_get_theme()->parent();
+			$theme_name = $parent ? $parent->get( 'Name' ) : wp_get_theme()->get( 'Name' );
+		} else {
+			$theme_name = wp_get_theme()->get( 'Name' );
+		}
+
 		$result = array(
-			'files'        => $by_file,
-			'total_issues' => $total_issues,
-			'counts'       => $counts,
-			'files_scanned'=> count( $files ),
-			'theme_name'   => wp_get_theme()->get( 'Name' ),
-			'theme_dir'    => $theme_dir,
-			'scanned_at'   => current_time( 'mysql' ),
+			'files'         => $by_file,
+			'total_issues'  => $total_issues,
+			'counts'        => $counts,
+			'files_scanned' => count( $files ),
+			'theme_name'    => $theme_name,
+			'theme_dir'     => $theme_dir,
+			'scanned_at'    => current_time( 'mysql' ),
+			'is_parent'     => $this->is_parent,
 		);
 
-		set_transient( self::CACHE_KEY, $result, self::CACHE_TTL );
+		set_transient( $this->cache_key, $result, self::CACHE_TTL );
 
 		return $result;
 	}

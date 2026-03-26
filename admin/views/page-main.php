@@ -3,8 +3,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$api_key    = get_option( 'sat_anthropic_api_key', '' );
-$theme_name = wp_get_theme()->get( 'Name' );
+$api_key          = get_option( 'sat_anthropic_api_key', '' );
+$active_theme     = wp_get_theme();
+$child_theme_name = $active_theme->get( 'Name' );
+$has_parent       = SAT_Theme_Scanner::has_parent_theme();
+$parent_theme_name = '';
+if ( $has_parent ) {
+	$parent_obj        = $active_theme->parent();
+	$parent_theme_name = $parent_obj ? $parent_obj->get( 'Name' ) : $child_theme_name;
+}
 ?>
 <div class="wrap sat-wrap">
 
@@ -31,8 +38,26 @@ $theme_name = wp_get_theme()->get( 'Name' );
 		<div class="sat-summary-item" id="sat-summary-theme">
 			<span class="sat-summary-icon dashicons dashicons-editor-code"></span>
 			<span class="sat-summary-count" id="sat-theme-count">—</span>
-			<span class="sat-summary-label"><?php esc_html_e( 'Theme template issues', 'search-alt-tags' ); ?></span>
+			<span class="sat-summary-label">
+				<?php
+				/* translators: %s: theme name */
+				printf( esc_html__( '%s issues', 'search-alt-tags' ), esc_html( $child_theme_name ) );
+				?>
+			</span>
 		</div>
+		<?php if ( $has_parent ) : ?>
+		<div class="sat-summary-divider"></div>
+		<div class="sat-summary-item" id="sat-summary-parent">
+			<span class="sat-summary-icon dashicons dashicons-editor-code"></span>
+			<span class="sat-summary-count" id="sat-parent-theme-count">—</span>
+			<span class="sat-summary-label">
+				<?php
+				/* translators: %s: parent theme name */
+				printf( esc_html__( '%s issues', 'search-alt-tags' ), esc_html( $parent_theme_name ) );
+				?>
+			</span>
+		</div>
+		<?php endif; ?>
 		<div class="sat-summary-spacer"></div>
 		<button id="sat-rescan-all-btn" class="button button-primary sat-rescan-all-btn">
 			<span class="dashicons dashicons-update"></span>
@@ -52,12 +77,17 @@ $theme_name = wp_get_theme()->get( 'Name' );
 			<button class="sat-tab" role="tab" aria-selected="false"
 				aria-controls="sat-panel-theme" id="sat-tab-theme">
 				<span class="dashicons dashicons-editor-code"></span>
-				<?php
-				/* translators: %s: theme name */
-				printf( esc_html__( 'Theme Templates (%s)', 'search-alt-tags' ), esc_html( $theme_name ) );
-				?>
+				<?php echo esc_html( $child_theme_name ); ?>
 				<span class="sat-tab-badge" id="sat-tab-theme-badge"></span>
 			</button>
+			<?php if ( $has_parent ) : ?>
+			<button class="sat-tab" role="tab" aria-selected="false"
+				aria-controls="sat-panel-parent-theme" id="sat-tab-parent-theme">
+				<span class="dashicons dashicons-editor-code"></span>
+				<?php echo esc_html( $parent_theme_name ); ?>
+				<span class="sat-tab-badge" id="sat-tab-parent-theme-badge"></span>
+			</button>
+			<?php endif; ?>
 		</nav>
 
 		<!-- ── PANEL: Media library ──────────────────────────────────────── -->
@@ -119,7 +149,7 @@ $theme_name = wp_get_theme()->get( 'Name' );
 
 		</div><!-- #sat-panel-media -->
 
-		<!-- ── PANEL: Theme templates ────────────────────────────────────── -->
+		<!-- ── PANEL: Child theme templates ──────────────────────────────── -->
 		<div class="sat-panel" id="sat-panel-theme" role="tabpanel" aria-labelledby="sat-tab-theme" hidden>
 
 			<div class="sat-panel-toolbar">
@@ -139,7 +169,7 @@ $theme_name = wp_get_theme()->get( 'Name' );
 					</a>
 					<button id="sat-rescan-theme-btn" class="button">
 						<span class="dashicons dashicons-update"></span>
-						<?php esc_html_e( 'Rescan Theme', 'search-alt-tags' ); ?>
+						<?php esc_html_e( 'Rescan', 'search-alt-tags' ); ?>
 					</button>
 				</div>
 			</div>
@@ -164,6 +194,63 @@ $theme_name = wp_get_theme()->get( 'Name' );
 			</div>
 
 		</div><!-- #sat-panel-theme -->
+
+		<?php if ( $has_parent ) : ?>
+		<!-- ── PANEL: Parent theme templates ─────────────────────────────── -->
+		<div class="sat-panel" id="sat-panel-parent-theme" role="tabpanel" aria-labelledby="sat-tab-parent-theme" hidden>
+
+			<div class="sat-readonly-notice">
+				<span class="dashicons dashicons-info"></span>
+				<?php printf(
+					/* translators: %s: parent theme name */
+					esc_html__( 'These issues are in the %s parent theme. To fix them without losing changes on update, override the affected file in your child theme.', 'search-alt-tags' ),
+					'<strong>' . esc_html( $parent_theme_name ) . '</strong>'
+				); ?>
+			</div>
+
+			<div class="sat-panel-toolbar">
+				<div class="sat-panel-toolbar-left">
+					<span class="sat-panel-count" id="sat-parent-theme-panel-count"></span>
+					<span class="sat-ignored-info" id="sat-parent-ignored-info" style="display:none;">
+						&nbsp;·&nbsp;
+						<span id="sat-parent-ignored-count"></span> ignored
+						&nbsp;<button id="sat-clear-parent-ignored-btn" class="button-link sat-clear-ignored-btn"><?php esc_html_e( 'Reset', 'search-alt-tags' ); ?></button>
+					</span>
+				</div>
+				<div class="sat-panel-toolbar-right">
+					<span class="sat-scan-time" id="sat-parent-scan-time"></span>
+					<a class="button" id="sat-export-parent-theme-csv" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=sat_export_parent_theme_csv' ), 'sat_export_nonce', 'nonce' ) ); ?>">
+						<span class="dashicons dashicons-download"></span>
+						<?php esc_html_e( 'Export CSV', 'search-alt-tags' ); ?>
+					</a>
+					<button id="sat-rescan-parent-theme-btn" class="button">
+						<span class="dashicons dashicons-update"></span>
+						<?php esc_html_e( 'Rescan', 'search-alt-tags' ); ?>
+					</button>
+				</div>
+			</div>
+
+			<!-- Legend -->
+			<div class="sat-legend">
+				<span class="sat-badge sat-badge--error"><?php esc_html_e( 'Error', 'search-alt-tags' ); ?></span>
+				<?php esc_html_e( 'Missing alt attribute', 'search-alt-tags' ); ?>
+				&ensp;
+				<span class="sat-badge sat-badge--warning"><?php esc_html_e( 'Warning', 'search-alt-tags' ); ?></span>
+				<?php esc_html_e( 'Empty alt=""', 'search-alt-tags' ); ?>
+				&ensp;
+				<span class="sat-badge sat-badge--notice"><?php esc_html_e( 'Notice', 'search-alt-tags' ); ?></span>
+				<?php esc_html_e( 'Dynamic alt (may be empty)', 'search-alt-tags' ); ?>
+			</div>
+
+			<div id="sat-parent-theme-results">
+				<div class="sat-loading-row">
+					<span class="spinner is-active"></span>
+					<?php esc_html_e( 'Scanning theme files…', 'search-alt-tags' ); ?>
+				</div>
+			</div>
+
+		</div><!-- #sat-panel-parent-theme -->
+		<?php endif; ?>
 
 	</div><!-- .sat-tabs-wrap -->
 
