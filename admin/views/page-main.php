@@ -106,11 +106,21 @@ if ( $has_parent ) {
 						<span class="dashicons dashicons-download"></span>
 						<?php esc_html_e( 'Export CSV', 'search-alt-tags' ); ?>
 					</a>
+					<button id="sat-import-media-btn" class="button">
+						<span class="dashicons dashicons-upload"></span>
+						<?php esc_html_e( 'Import CSV', 'search-alt-tags' ); ?>
+					</button>
+					<input type="file" id="sat-import-media-file" accept=".csv" style="display:none;">
 					<button id="sat-rescan-media-btn" class="button">
 						<span class="dashicons dashicons-update"></span>
 						<?php esc_html_e( 'Rescan Media', 'search-alt-tags' ); ?>
 					</button>
 				</div>
+			</div>
+
+			<div id="sat-import-result" class="sat-import-result" style="display:none;">
+				<span class="sat-import-msg"></span>
+				<button class="sat-import-dismiss" aria-label="<?php esc_attr_e( 'Dismiss', 'search-alt-tags' ); ?>">&#x2715;</button>
 			</div>
 
 			<!-- Bulk progress -->

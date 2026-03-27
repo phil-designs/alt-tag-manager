@@ -88,6 +88,59 @@
 			loadMediaPage(1);
 		});
 
+		$('#sat-import-media-btn').on('click', function () {
+			$('#sat-import-media-file').trigger('click');
+		});
+
+		$('#sat-import-media-file').on('change', function () {
+			var file = this.files[0];
+			if (!file) return;
+
+			var formData = new FormData();
+			formData.append('action', 'sat_import_media_csv');
+			formData.append('nonce', SAT.nonce);
+			formData.append('csv_file', file);
+
+			var $btn = $('#sat-import-media-btn');
+			$btn.prop('disabled', true);
+			$btn.find('.dashicons').attr('class', 'dashicons dashicons-update sat-spin');
+			$('#sat-import-result').hide();
+
+			$.ajax({
+				url: SAT.ajaxUrl,
+				type: 'POST',
+				data: formData,
+				contentType: false,
+				processData: false,
+				success: function (res) {
+					$btn.prop('disabled', false);
+					$btn.find('.dashicons').attr('class', 'dashicons dashicons-upload');
+					if (res.success) {
+						var d   = res.data;
+						var msg = d.updated + ' alt tag' + (d.updated !== 1 ? 's' : '') + ' updated.';
+						if (d.skipped > 0) msg += ' ' + d.skipped + ' row' + (d.skipped !== 1 ? 's' : '') + ' skipped (empty alt text).';
+						if (d.errors  > 0) msg += ' ' + d.errors  + ' invalid attachment ID' + (d.errors  !== 1 ? 's' : '') + '.';
+						showImportResult(msg, d.updated > 0 ? 'success' : 'warning');
+						if (d.updated > 0) loadMediaPage(1);
+					} else {
+						showImportResult(res.data ? res.data.message : SAT.i18n.error, 'error');
+					}
+				},
+				error: function () {
+					$btn.prop('disabled', false);
+					$btn.find('.dashicons').attr('class', 'dashicons dashicons-upload');
+					showImportResult(SAT.i18n.error, 'error');
+				}
+			});
+
+			// Reset so the same file can be re-selected after edits.
+			$(this).val('');
+		});
+
+		$('#sat-panel-media').on('click', '.sat-import-dismiss', function () {
+			$('#sat-import-result').hide();
+		});
+
 		$('#sat-prev-page').on('click', function () {
 			if (media.page > 1) loadMediaPage(media.page - 1);
 		});
@@ -619,6 +672,13 @@
 	// =========================================================================
 	// SHARED HELPERS
 	// =========================================================================
+
+	function showImportResult(msg, type) {
+		$('#sat-import-result')
+			.attr('class', 'sat-import-result sat-import-result--' + type)
+			.find('.sat-import-msg').text(msg).end()
+			.show();
+	}
 
 	function loadingRow(cols) {
 		return '<tr class="sat-loading-row"><td colspan="' + cols + '"><span class="spinner is-active"></span> Loading…</td></tr>';

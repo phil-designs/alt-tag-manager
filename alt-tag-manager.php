@@ -3,7 +3,7 @@
  * Plugin Name: Alt Tag Manager
  * Plugin URI:  http://www.phildesigns.com
  * Description: Find images missing alt tags in the media library and in active theme templates. Add tags manually or auto-generate them with AI.
- * Version:     1.0.0
+ * Version:     1.2.0
  * Author:      phil.designs | Phillip De Vita
  * Author URI:  http://www.phildesigns.com
  * License:     GPL2
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SAT_VERSION',    '1.0.0' );
+define( 'SAT_VERSION',    '1.2.0' );
 define( 'SAT_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SAT_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -23,11 +23,20 @@ require_once SAT_PLUGIN_DIR . 'includes/class-sat-claude.php';
 
 class Search_Alt_Tags {
 
+	/**
+	 * Set to true while our own AJAX save is running so the updated_post_meta
+	 * hook skips the sync (we handle it directly there with an accurate count).
+	 *
+	 * @var bool
+	 */
+	private $skip_alt_sync = false;
+
 	public function __construct() {
 		add_action( 'admin_menu',             array( $this, 'register_menus' ) );
 		add_action( 'admin_enqueue_scripts',  array( $this, 'enqueue_assets' ) );
 		add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), array( $this, 'plugin_action_links' ) );
 
+		add_action( 'updated_post_meta',             array( $this, 'sync_alt_to_post_content' ), 10, 4 );
 		add_action( 'wp_ajax_sat_get_media_images',  array( $this, 'ajax_get_media_images' ) );
 		add_action( 'wp_ajax_sat_save_alt_tag',      array( $this, 'ajax_save_alt_tag' ) );
 		add_action( 'wp_ajax_sat_generate_alt_tag',  array( $this, 'ajax_generate_alt_tag' ) );
@@ -42,6 +51,7 @@ class Search_Alt_Tags {
 		add_action( 'wp_ajax_sat_rescan_parent_theme',            array( $this, 'ajax_rescan_parent_theme' ) );
 		add_action( 'wp_ajax_sat_ignore_parent_theme_issue',      array( $this, 'ajax_ignore_parent_theme_issue' ) );
 		add_action( 'wp_ajax_sat_clear_ignored_parent_theme',     array( $this, 'ajax_clear_ignored_parent_theme' ) );
+		add_action( 'wp_ajax_sat_import_media_csv',               array( $this, 'ajax_import_media_csv' ) );
 		add_action( 'admin_post_sat_export_media_csv',            array( $this, 'export_media_csv' ) );
 		add_action( 'admin_post_sat_export_theme_csv',            array( $this, 'export_theme_csv' ) );
 		add_action( 'admin_post_sat_export_parent_theme_csv',     array( $this, 'export_parent_theme_csv' ) );
@@ -227,7 +237,9 @@ class Search_Alt_Tags {
 			wp_send_json_error( array( 'message' => __( 'Invalid attachment ID.', 'search-alt-tags' ) ) );
 		}
 
+		$this->skip_alt_sync = true;
 		update_post_meta( $attachment_id, '_wp_attachment_image_alt', $alt_text );
+		$this->skip_alt_sync = false;
 
 		$posts_updated = ! empty( $alt_text ) ? $this->update_post_content_alt( $attachment_id, $alt_text ) : 0;
 
@@ -360,6 +372,90 @@ class Search_Alt_Tags {
 	}
 
 	// -------------------------------------------------------------------------
+	// AJAX — import media CSV
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Accepts a CSV upload with "ID" and "Alt Tag" columns and bulk-updates
+	 * the _wp_attachment_image_alt meta for each matched attachment.
+	 */
+	public function ajax_import_media_csv() {
+		check_ajax_referer( 'sat_nonce', 'nonce' );
+		if ( ! current_user_can( 'upload_files' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'search-alt-tags' ) ) );
+		}
+
+		if ( empty( $_FILES['csv_file'] ) || UPLOAD_ERR_OK !== (int) $_FILES['csv_file']['error'] ) {
+			wp_send_json_error( array( 'message' => __( 'No file uploaded or upload error.', 'search-alt-tags' ) ) );
+		}
+
+		$file = $_FILES['csv_file']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+
+		// Validate extension.
+		$ext = strtolower( pathinfo( sanitize_file_name( $file['name'] ), PATHINFO_EXTENSION ) );
+		if ( 'csv' !== $ext ) {
+			wp_send_json_error( array( 'message' => __( 'Please upload a .csv file.', 'search-alt-tags' ) ) );
+		}
+
+		$handle = fopen( $file['tmp_name'], 'r' ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		if ( ! $handle ) {
+			wp_send_json_error( array( 'message' => __( 'Could not read the uploaded file.', 'search-alt-tags' ) ) );
+		}
+
+		// Parse and normalise header row.
+		$headers = fgetcsv( $handle );
+		if ( ! $headers ) {
+			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+			wp_send_json_error( array( 'message' => __( 'CSV file is empty or invalid.', 'search-alt-tags' ) ) );
+		}
+
+		$headers = array_map( function ( $h ) { return strtolower( trim( $h ) ); }, $headers );
+		$id_col  = array_search( 'id', $headers, true );
+		$alt_col = array_search( 'alt tag', $headers, true );
+
+		if ( false === $id_col || false === $alt_col ) {
+			fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+			wp_send_json_error( array( 'message' => __( 'CSV must contain "ID" and "Alt Tag" columns. Download the template CSV for the correct format.', 'search-alt-tags' ) ) );
+		}
+
+		$updated = 0;
+		$skipped = 0;
+		$errors  = 0;
+
+		while ( ( $row = fgetcsv( $handle ) ) !== false ) {
+			$id  = isset( $row[ $id_col ] )  ? (int) $row[ $id_col ]                                               : 0;
+			$alt = isset( $row[ $alt_col ] ) ? sanitize_text_field( wp_unslash( $row[ $alt_col ] ) ) : '';
+
+			if ( $id <= 0 ) {
+				$skipped++;
+				continue;
+			}
+
+			if ( '' === trim( $alt ) ) {
+				$skipped++;
+				continue;
+			}
+
+			$post = get_post( $id );
+			if ( ! $post || 'attachment' !== $post->post_type ) {
+				$errors++;
+				continue;
+			}
+
+			update_post_meta( $id, '_wp_attachment_image_alt', $alt );
+			$updated++;
+		}
+
+		fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+
+		wp_send_json_success( array(
+			'updated' => $updated,
+			'skipped' => $skipped,
+			'errors'  => $errors,
+		) );
+	}
+
+	// -------------------------------------------------------------------------
 	// AJAX — parent theme scan / rescan / ignore
 	// -------------------------------------------------------------------------
 	public function ajax_scan_parent_theme() {
@@ -437,7 +533,7 @@ class Search_Alt_Tags {
 		header( 'Pragma: no-cache' );
 
 		$out = fopen( 'php://output', 'w' );
-		fputcsv( $out, array( 'ID', 'Filename', 'URL', 'Dimensions', 'File Size', 'Date Uploaded' ) );
+		fputcsv( $out, array( 'ID', 'Filename', 'URL', 'Dimensions', 'File Size', 'Date Uploaded', 'Alt Tag' ) );
 
 		foreach ( $result['images'] as $img ) {
 			fputcsv( $out, array(
@@ -447,6 +543,7 @@ class Search_Alt_Tags {
 				$img['dimensions'],
 				$img['file_size'],
 				$img['date'],
+				'', // Fill in this column then re-upload via Import CSV
 			) );
 		}
 
@@ -568,6 +665,37 @@ class Search_Alt_Tags {
 		$results['counts'] = $counts;
 
 		return $results;
+	}
+
+	// -------------------------------------------------------------------------
+	// Hook — sync alt tag edits made outside the plugin to post content
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Fires whenever _wp_attachment_image_alt is updated — including saves made
+	 * directly in the WordPress media library. Rewrites any <img> tags in post
+	 * content that reference this attachment so they stay in sync.
+	 *
+	 * Our own ajax_save_alt_tag() sets $skip_alt_sync = true before calling
+	 * update_post_meta, so this hook is a no-op for plugin-originated saves
+	 * (which handle post-content rewriting directly with an accurate count).
+	 *
+	 * @param int    $meta_id   ID of the updated meta row (unused).
+	 * @param int    $post_id   Attachment post ID.
+	 * @param string $meta_key  Meta key that was updated.
+	 * @param string $meta_value New alt text value.
+	 */
+	public function sync_alt_to_post_content( $meta_id, $post_id, $meta_key, $meta_value ) {
+		if ( '_wp_attachment_image_alt' !== $meta_key || $this->skip_alt_sync ) {
+			return;
+		}
+
+		$post = get_post( $post_id );
+		if ( ! $post || 'attachment' !== $post->post_type ) {
+			return;
+		}
+
+		$this->update_post_content_alt( $post_id, $meta_value );
 	}
 
 	// -------------------------------------------------------------------------
