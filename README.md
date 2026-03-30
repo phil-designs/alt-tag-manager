@@ -31,6 +31,13 @@ http://www.phildesigns.com/
 * Rate limit protection — 500ms delay between requests + automatic retry on 429 errors
 * Content sync — when an alt tag is saved (manually or AI), it updates matching <img> tags across all post content, CPTs, and ACF WYSIWYG fields
 
+## Key Features
+- Full scan of the media library for missing alt tags
+- Full scan of active theme or parent and child theme for missing alt tags within the template markup
+- CSV file down load
+- Bulk generated tags via AI or manually using the csv file import
+- Auto update for the database when alt tags are added or updated
+
 ## Changelog 
 
 Version 1.2.0
