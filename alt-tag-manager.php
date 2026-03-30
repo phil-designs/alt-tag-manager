@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Alt Tag Manager
- * Plugin URI:  http://www.phildesigns.com
+ * Plugin URI:  https://www.phildesigns.com
  * Description: Find images missing alt tags in the media library and in active theme templates. Add tags manually or auto-generate them with AI.
  * Version:     1.2.0
  * Author:      phil.designs | Phillip De Vita
