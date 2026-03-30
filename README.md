@@ -34,7 +34,7 @@ http://www.phildesigns.com/
 ## Changelog 
 
 Version 1.2.0
-• Initial release (everything that was there before this session)
+• Initial release
 
 Version 1.1.0 
 • Minor bump for the parent theme tab feature + the child-theme scanner bug fix
