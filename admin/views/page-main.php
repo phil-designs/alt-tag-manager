@@ -3,26 +3,28 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$api_key          = get_option( 'sat_anthropic_api_key', '' );
-$active_theme     = wp_get_theme();
-$child_theme_name = $active_theme->get( 'Name' );
-$has_parent       = SAT_Theme_Scanner::has_parent_theme();
-$parent_theme_name = '';
-if ( $has_parent ) {
-	$parent_obj        = $active_theme->parent();
-	$parent_theme_name = $parent_obj ? $parent_obj->get( 'Name' ) : $child_theme_name;
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- template file required inside a class method; variables are local to that method scope, not global.
+$sat_api_key           = get_option( 'sat_anthropic_api_key', '' );
+$sat_active_theme      = wp_get_theme();
+$sat_child_theme_name  = $sat_active_theme->get( 'Name' );
+$sat_has_parent        = SAT_Theme_Scanner::has_parent_theme();
+$sat_parent_theme_name = '';
+if ( $sat_has_parent ) {
+	$sat_parent_obj        = $sat_active_theme->parent();
+	$sat_parent_theme_name = $sat_parent_obj ? $sat_parent_obj->get( 'Name' ) : $sat_child_theme_name;
 }
+// phpcs:enable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
 ?>
 <div class="wrap sat-wrap">
 
-	<h1 class="wp-heading-inline"><?php esc_html_e( 'Search Alt Tags', 'search-alt-tags' ); ?></h1>
+	<h1 class="wp-heading-inline"><?php esc_html_e( 'Search Alt Tags', 'alt-tag-manager' ); ?></h1>
 
-	<?php if ( empty( $api_key ) ) : ?>
+	<?php if ( empty( $sat_api_key ) ) : ?>
 	<div class="notice notice-warning inline sat-api-notice">
 		<p><?php printf(
 			/* translators: %s: link */
-			esc_html__( 'AI generation is disabled — %s to add your Anthropic API key.', 'search-alt-tags' ),
-			'<a href="' . esc_url( admin_url( 'upload.php?page=search-alt-tags-settings' ) ) . '">' . esc_html__( 'go to settings', 'search-alt-tags' ) . '</a>'
+			esc_html__( 'AI generation is disabled — %s to add your Anthropic API key.', 'alt-tag-manager' ),
+			'<a href="' . esc_url( admin_url( 'upload.php?page=search-alt-tags-settings' ) ) . '">' . esc_html__( 'go to settings', 'alt-tag-manager' ) . '</a>'
 		); ?></p>
 	</div>
 	<?php endif; ?>
@@ -32,7 +34,7 @@ if ( $has_parent ) {
 		<div class="sat-summary-item" id="sat-summary-media">
 			<span class="sat-summary-icon dashicons dashicons-format-image"></span>
 			<span class="sat-summary-count" id="sat-media-count">—</span>
-			<span class="sat-summary-label"><?php esc_html_e( 'Media library issues', 'search-alt-tags' ); ?></span>
+			<span class="sat-summary-label"><?php esc_html_e( 'Media library issues', 'alt-tag-manager' ); ?></span>
 		</div>
 		<div class="sat-summary-divider"></div>
 		<div class="sat-summary-item" id="sat-summary-theme">
@@ -41,11 +43,11 @@ if ( $has_parent ) {
 			<span class="sat-summary-label">
 				<?php
 				/* translators: %s: theme name */
-				printf( esc_html__( '%s issues', 'search-alt-tags' ), esc_html( $child_theme_name ) );
+				printf( esc_html__( '%s issues', 'alt-tag-manager' ), esc_html( $sat_child_theme_name ) );
 				?>
 			</span>
 		</div>
-		<?php if ( $has_parent ) : ?>
+		<?php if ( $sat_has_parent ) : ?>
 		<div class="sat-summary-divider"></div>
 		<div class="sat-summary-item" id="sat-summary-parent">
 			<span class="sat-summary-icon dashicons dashicons-editor-code"></span>
@@ -53,7 +55,7 @@ if ( $has_parent ) {
 			<span class="sat-summary-label">
 				<?php
 				/* translators: %s: parent theme name */
-				printf( esc_html__( '%s issues', 'search-alt-tags' ), esc_html( $parent_theme_name ) );
+				printf( esc_html__( '%s issues', 'alt-tag-manager' ), esc_html( $sat_parent_theme_name ) );
 				?>
 			</span>
 		</div>
@@ -61,7 +63,7 @@ if ( $has_parent ) {
 		<div class="sat-summary-spacer"></div>
 		<button id="sat-rescan-all-btn" class="button button-primary sat-rescan-all-btn">
 			<span class="dashicons dashicons-update"></span>
-			<?php esc_html_e( 'Rescan Everything', 'search-alt-tags' ); ?>
+			<?php esc_html_e( 'Rescan Everything', 'alt-tag-manager' ); ?>
 		</button>
 	</div>
 
@@ -71,20 +73,20 @@ if ( $has_parent ) {
 			<button class="sat-tab sat-tab--active" role="tab" aria-selected="true"
 				aria-controls="sat-panel-media" id="sat-tab-media">
 				<span class="dashicons dashicons-format-image"></span>
-				<?php esc_html_e( 'Media Library', 'search-alt-tags' ); ?>
+				<?php esc_html_e( 'Media Library', 'alt-tag-manager' ); ?>
 				<span class="sat-tab-badge" id="sat-tab-media-badge"></span>
 			</button>
 			<button class="sat-tab" role="tab" aria-selected="false"
 				aria-controls="sat-panel-theme" id="sat-tab-theme">
 				<span class="dashicons dashicons-editor-code"></span>
-				<?php echo esc_html( $child_theme_name ); ?>
+				<?php echo esc_html( $sat_child_theme_name ); ?>
 				<span class="sat-tab-badge" id="sat-tab-theme-badge"></span>
 			</button>
-			<?php if ( $has_parent ) : ?>
+			<?php if ( $sat_has_parent ) : ?>
 			<button class="sat-tab" role="tab" aria-selected="false"
 				aria-controls="sat-panel-parent-theme" id="sat-tab-parent-theme">
 				<span class="dashicons dashicons-editor-code"></span>
-				<?php echo esc_html( $parent_theme_name ); ?>
+				<?php echo esc_html( $sat_parent_theme_name ); ?>
 				<span class="sat-tab-badge" id="sat-tab-parent-theme-badge"></span>
 			</button>
 			<?php endif; ?>
@@ -96,31 +98,31 @@ if ( $has_parent ) {
 			<div class="sat-panel-toolbar">
 				<span class="sat-panel-count" id="sat-media-panel-count"></span>
 				<div class="sat-panel-toolbar-right">
-					<?php if ( ! empty( $api_key ) ) : ?>
+					<?php if ( ! empty( $sat_api_key ) ) : ?>
 					<button id="sat-bulk-generate-btn" class="button">
 						<span class="dashicons dashicons-superhero"></span>
-						<?php esc_html_e( 'AI Generate All', 'search-alt-tags' ); ?>
+						<?php esc_html_e( 'AI Generate All', 'alt-tag-manager' ); ?>
 					</button>
 					<?php endif; ?>
 					<a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=sat_export_media_csv' ), 'sat_export_nonce', 'nonce' ) ); ?>">
 						<span class="dashicons dashicons-download"></span>
-						<?php esc_html_e( 'Export CSV', 'search-alt-tags' ); ?>
+						<?php esc_html_e( 'Export CSV', 'alt-tag-manager' ); ?>
 					</a>
 					<button id="sat-import-media-btn" class="button">
 						<span class="dashicons dashicons-upload"></span>
-						<?php esc_html_e( 'Import CSV', 'search-alt-tags' ); ?>
+						<?php esc_html_e( 'Import CSV', 'alt-tag-manager' ); ?>
 					</button>
 					<input type="file" id="sat-import-media-file" accept=".csv" style="display:none;">
 					<button id="sat-rescan-media-btn" class="button">
 						<span class="dashicons dashicons-update"></span>
-						<?php esc_html_e( 'Rescan Media', 'search-alt-tags' ); ?>
+						<?php esc_html_e( 'Rescan Media', 'alt-tag-manager' ); ?>
 					</button>
 				</div>
 			</div>
 
 			<div id="sat-import-result" class="sat-import-result" style="display:none;">
 				<span class="sat-import-msg"></span>
-				<button class="sat-import-dismiss" aria-label="<?php esc_attr_e( 'Dismiss', 'search-alt-tags' ); ?>">&#x2715;</button>
+				<button class="sat-import-dismiss" aria-label="<?php esc_attr_e( 'Dismiss', 'alt-tag-manager' ); ?>">&#x2715;</button>
 			</div>
 
 			<!-- Bulk progress -->
@@ -130,7 +132,7 @@ if ( $has_parent ) {
 				</div>
 				<div class="sat-progress-footer">
 					<span class="sat-progress-label" id="sat-progress-label"></span>
-					<button id="sat-cancel-bulk" class="button button-small"><?php esc_html_e( 'Cancel', 'search-alt-tags' ); ?></button>
+					<button id="sat-cancel-bulk" class="button button-small"><?php esc_html_e( 'Cancel', 'alt-tag-manager' ); ?></button>
 				</div>
 				<div id="sat-bulk-error" class="sat-bulk-error" style="display:none;"></div>
 			</div>
@@ -138,23 +140,23 @@ if ( $has_parent ) {
 			<table class="wp-list-table widefat fixed striped sat-media-table">
 				<thead>
 					<tr>
-						<th class="sat-col-thumb"><?php esc_html_e( 'Image', 'search-alt-tags' ); ?></th>
-						<th class="sat-col-file"><?php esc_html_e( 'File', 'search-alt-tags' ); ?></th>
-						<th class="sat-col-alt"><?php esc_html_e( 'Alt Tag', 'search-alt-tags' ); ?></th>
-						<th class="sat-col-actions"><?php esc_html_e( 'Actions', 'search-alt-tags' ); ?></th>
+						<th class="sat-col-thumb"><?php esc_html_e( 'Image', 'alt-tag-manager' ); ?></th>
+						<th class="sat-col-file"><?php esc_html_e( 'File', 'alt-tag-manager' ); ?></th>
+						<th class="sat-col-alt"><?php esc_html_e( 'Alt Tag', 'alt-tag-manager' ); ?></th>
+						<th class="sat-col-actions"><?php esc_html_e( 'Actions', 'alt-tag-manager' ); ?></th>
 					</tr>
 				</thead>
 				<tbody id="sat-media-list">
 					<tr class="sat-loading-row">
-						<td colspan="4"><span class="spinner is-active"></span> <?php esc_html_e( 'Loading…', 'search-alt-tags' ); ?></td>
+						<td colspan="4"><span class="spinner is-active"></span> <?php esc_html_e( 'Loading…', 'alt-tag-manager' ); ?></td>
 					</tr>
 				</tbody>
 			</table>
 
 			<div id="sat-media-pagination" class="sat-pagination" style="display:none;">
-				<button id="sat-prev-page" class="button" disabled><?php esc_html_e( '← Previous', 'search-alt-tags' ); ?></button>
+				<button id="sat-prev-page" class="button" disabled><?php esc_html_e( '← Previous', 'alt-tag-manager' ); ?></button>
 				<span id="sat-page-info" class="sat-page-info"></span>
-				<button id="sat-next-page" class="button"><?php esc_html_e( 'Next →', 'search-alt-tags' ); ?></button>
+				<button id="sat-next-page" class="button"><?php esc_html_e( 'Next →', 'alt-tag-manager' ); ?></button>
 			</div>
 
 		</div><!-- #sat-panel-media -->
@@ -168,44 +170,44 @@ if ( $has_parent ) {
 					<span class="sat-ignored-info" id="sat-ignored-info" style="display:none;">
 						&nbsp;·&nbsp;
 						<span id="sat-ignored-count"></span> ignored
-						&nbsp;<button id="sat-clear-ignored-btn" class="button-link sat-clear-ignored-btn"><?php esc_html_e( 'Reset', 'search-alt-tags' ); ?></button>
+						&nbsp;<button id="sat-clear-ignored-btn" class="button-link sat-clear-ignored-btn"><?php esc_html_e( 'Reset', 'alt-tag-manager' ); ?></button>
 					</span>
 				</div>
 				<div class="sat-panel-toolbar-right">
 					<span class="sat-scan-time" id="sat-scan-time"></span>
 					<a class="button" id="sat-export-theme-csv" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=sat_export_theme_csv' ), 'sat_export_nonce', 'nonce' ) ); ?>">
 						<span class="dashicons dashicons-download"></span>
-						<?php esc_html_e( 'Export CSV', 'search-alt-tags' ); ?>
+						<?php esc_html_e( 'Export CSV', 'alt-tag-manager' ); ?>
 					</a>
 					<button id="sat-rescan-theme-btn" class="button">
 						<span class="dashicons dashicons-update"></span>
-						<?php esc_html_e( 'Rescan', 'search-alt-tags' ); ?>
+						<?php esc_html_e( 'Rescan', 'alt-tag-manager' ); ?>
 					</button>
 				</div>
 			</div>
 
 			<!-- Legend -->
 			<div class="sat-legend">
-				<span class="sat-badge sat-badge--error"><?php esc_html_e( 'Error', 'search-alt-tags' ); ?></span>
-				<?php esc_html_e( 'Missing alt attribute', 'search-alt-tags' ); ?>
+				<span class="sat-badge sat-badge--error"><?php esc_html_e( 'Error', 'alt-tag-manager' ); ?></span>
+				<?php esc_html_e( 'Missing alt attribute', 'alt-tag-manager' ); ?>
 				&ensp;
-				<span class="sat-badge sat-badge--warning"><?php esc_html_e( 'Warning', 'search-alt-tags' ); ?></span>
-				<?php esc_html_e( 'Empty alt=""', 'search-alt-tags' ); ?>
+				<span class="sat-badge sat-badge--warning"><?php esc_html_e( 'Warning', 'alt-tag-manager' ); ?></span>
+				<?php esc_html_e( 'Empty alt=""', 'alt-tag-manager' ); ?>
 				&ensp;
-				<span class="sat-badge sat-badge--notice"><?php esc_html_e( 'Notice', 'search-alt-tags' ); ?></span>
-				<?php esc_html_e( 'Dynamic alt (may be empty)', 'search-alt-tags' ); ?>
+				<span class="sat-badge sat-badge--notice"><?php esc_html_e( 'Notice', 'alt-tag-manager' ); ?></span>
+				<?php esc_html_e( 'Dynamic alt (may be empty)', 'alt-tag-manager' ); ?>
 			</div>
 
 			<div id="sat-theme-results">
 				<div class="sat-loading-row">
 					<span class="spinner is-active"></span>
-					<?php esc_html_e( 'Scanning theme files…', 'search-alt-tags' ); ?>
+					<?php esc_html_e( 'Scanning theme files…', 'alt-tag-manager' ); ?>
 				</div>
 			</div>
 
 		</div><!-- #sat-panel-theme -->
 
-		<?php if ( $has_parent ) : ?>
+		<?php if ( $sat_has_parent ) : ?>
 		<!-- ── PANEL: Parent theme templates ─────────────────────────────── -->
 		<div class="sat-panel" id="sat-panel-parent-theme" role="tabpanel" aria-labelledby="sat-tab-parent-theme" hidden>
 
@@ -213,8 +215,8 @@ if ( $has_parent ) {
 				<span class="dashicons dashicons-info"></span>
 				<?php printf(
 					/* translators: %s: parent theme name */
-					esc_html__( 'These issues are in the %s parent theme. To fix them without losing changes on update, override the affected file in your child theme.', 'search-alt-tags' ),
-					'<strong>' . esc_html( $parent_theme_name ) . '</strong>'
+					esc_html__( 'These issues are in the %s parent theme. To fix them without losing changes on update, override the affected file in your child theme.', 'alt-tag-manager' ),
+					'<strong>' . esc_html( $sat_parent_theme_name ) . '</strong>'
 				); ?>
 			</div>
 
@@ -224,38 +226,38 @@ if ( $has_parent ) {
 					<span class="sat-ignored-info" id="sat-parent-ignored-info" style="display:none;">
 						&nbsp;·&nbsp;
 						<span id="sat-parent-ignored-count"></span> ignored
-						&nbsp;<button id="sat-clear-parent-ignored-btn" class="button-link sat-clear-ignored-btn"><?php esc_html_e( 'Reset', 'search-alt-tags' ); ?></button>
+						&nbsp;<button id="sat-clear-parent-ignored-btn" class="button-link sat-clear-ignored-btn"><?php esc_html_e( 'Reset', 'alt-tag-manager' ); ?></button>
 					</span>
 				</div>
 				<div class="sat-panel-toolbar-right">
 					<span class="sat-scan-time" id="sat-parent-scan-time"></span>
 					<a class="button" id="sat-export-parent-theme-csv" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=sat_export_parent_theme_csv' ), 'sat_export_nonce', 'nonce' ) ); ?>">
 						<span class="dashicons dashicons-download"></span>
-						<?php esc_html_e( 'Export CSV', 'search-alt-tags' ); ?>
+						<?php esc_html_e( 'Export CSV', 'alt-tag-manager' ); ?>
 					</a>
 					<button id="sat-rescan-parent-theme-btn" class="button">
 						<span class="dashicons dashicons-update"></span>
-						<?php esc_html_e( 'Rescan', 'search-alt-tags' ); ?>
+						<?php esc_html_e( 'Rescan', 'alt-tag-manager' ); ?>
 					</button>
 				</div>
 			</div>
 
 			<!-- Legend -->
 			<div class="sat-legend">
-				<span class="sat-badge sat-badge--error"><?php esc_html_e( 'Error', 'search-alt-tags' ); ?></span>
-				<?php esc_html_e( 'Missing alt attribute', 'search-alt-tags' ); ?>
+				<span class="sat-badge sat-badge--error"><?php esc_html_e( 'Error', 'alt-tag-manager' ); ?></span>
+				<?php esc_html_e( 'Missing alt attribute', 'alt-tag-manager' ); ?>
 				&ensp;
-				<span class="sat-badge sat-badge--warning"><?php esc_html_e( 'Warning', 'search-alt-tags' ); ?></span>
-				<?php esc_html_e( 'Empty alt=""', 'search-alt-tags' ); ?>
+				<span class="sat-badge sat-badge--warning"><?php esc_html_e( 'Warning', 'alt-tag-manager' ); ?></span>
+				<?php esc_html_e( 'Empty alt=""', 'alt-tag-manager' ); ?>
 				&ensp;
-				<span class="sat-badge sat-badge--notice"><?php esc_html_e( 'Notice', 'search-alt-tags' ); ?></span>
-				<?php esc_html_e( 'Dynamic alt (may be empty)', 'search-alt-tags' ); ?>
+				<span class="sat-badge sat-badge--notice"><?php esc_html_e( 'Notice', 'alt-tag-manager' ); ?></span>
+				<?php esc_html_e( 'Dynamic alt (may be empty)', 'alt-tag-manager' ); ?>
 			</div>
 
 			<div id="sat-parent-theme-results">
 				<div class="sat-loading-row">
 					<span class="spinner is-active"></span>
-					<?php esc_html_e( 'Scanning theme files…', 'search-alt-tags' ); ?>
+					<?php esc_html_e( 'Scanning theme files…', 'alt-tag-manager' ); ?>
 				</div>
 			</div>
 
@@ -285,18 +287,18 @@ if ( $has_parent ) {
 					type="text"
 					class="sat-alt-input large-text"
 					value="{{alt}}"
-					placeholder="<?php esc_attr_e( 'Describe this image…', 'search-alt-tags' ); ?>"
-					aria-label="<?php esc_attr_e( 'Alt tag', 'search-alt-tags' ); ?>"
+					placeholder="<?php esc_attr_e( 'Describe this image…', 'alt-tag-manager' ); ?>"
+					aria-label="<?php esc_attr_e( 'Alt tag', 'alt-tag-manager' ); ?>"
 				>
 				<span class="sat-status"></span>
 			</td>
 			<td class="sat-col-actions">
 				<button class="button sat-save-btn">
-					<span class="dashicons dashicons-saved"></span><?php esc_html_e( 'Save', 'search-alt-tags' ); ?>
+					<span class="dashicons dashicons-saved"></span><?php esc_html_e( 'Save', 'alt-tag-manager' ); ?>
 				</button>
-				<?php if ( ! empty( $api_key ) ) : ?>
+				<?php if ( ! empty( $sat_api_key ) ) : ?>
 				<button class="button sat-generate-btn">
-					<span class="dashicons dashicons-superhero-alt"></span><?php esc_html_e( 'AI Generate', 'search-alt-tags' ); ?>
+					<span class="dashicons dashicons-superhero-alt"></span><?php esc_html_e( 'AI Generate', 'alt-tag-manager' ); ?>
 				</button>
 				<?php endif; ?>
 			</td>

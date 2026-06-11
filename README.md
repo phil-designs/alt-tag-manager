@@ -1,50 +1,56 @@
-# Alt Tag Manager
+# PhilDesigns Alt Tag Manager
 
-Tags: javascript, php
-Requires at least: 3.6.0
-Tested up to: 6.9.1
-License: GPL2
+**Contributors:** phildesigns  
+**Tags:** alt tags, accessibility, media library, images, seo  
+**Requires at least:** 5.8  
+**Tested up to:** 7.0  
+**Stable tag:** 1.2.0  
+**Requires PHP:** 7.4  
+**License:** GPLv2 or later  
+**License URI:** https://www.gnu.org/licenses/gpl-2.0.html
 
 ## Description
 
-Find images missing alt tags in the media library and in active theme templates. Add tags manually or auto-generate them with AI.
+Find images missing alt tags in your media library and active theme templates. Fix them manually or auto-generate with AI (Anthropic Claude).
 
-## Tested on 
-* Firefox 
+## Tested On
+* Firefox
 * Safari
 * Chrome
 * Opera
 * MS Edge
 
-## Website 
-http://www.phildesigns.com/
+## Website
+https://www.phildesigns.com/
 
-## Installation 
-1. Upload ‘alt-tag-manager’ to the '/wp-content/plugins/' directory
-2. Activate the plugin through the 'Plugins' menu in WordPress
-3. Add you Anthropic API key on the Media > Alt Tag Settings page for AI alt tag generation
-4. Got to the Media > Search Alt Tags page and scan your library and active theme for missing alt tags.
-5. Add alt tags manually or use the AI generated alt tag option or Bulk AI generated option.
-
-## Highlights
-* Bulk AI generation — generates alt tags for all images missing one in the media library
-* Rate limit protection — 500ms delay between requests + automatic retry on 429 errors
-* Content sync — when an alt tag is saved (manually or AI), it updates matching <img> tags across all post content, CPTs, and ACF WYSIWYG fields
+## Installation
+1. Upload `alt-tag-manager` to the `/wp-content/plugins/` directory.
+2. Activate the plugin through the **Plugins** menu in WordPress.
+3. Go to **Media > Alt Tag Settings** and enter your Anthropic API key to enable AI generation.
+4. Go to **Media > Search Alt Tags** and scan your media library and active theme for missing alt tags.
+5. Add alt tags manually, generate them with AI per image, or run a **Bulk AI Generate** for all missing tags at once.
 
 ## Key Features
 - Full scan of the media library for missing alt tags
-- Full scan of active theme or parent and child theme for missing alt tags within the template markup
-- CSV file down load
-- Bulk generated tags via AI or manually using the csv file import
-- Auto update for the database when alt tags are added or updated
+- Full scan of the active theme (parent and child) template files
+- AI-powered alt tag generation via Anthropic Claude API
+- Bulk AI generation — processes every untagged media image in one pass
+- Rate-limit protection — 500ms delay between requests + automatic retry on 429 errors
+- Content sync — saving an alt tag rewrites matching `<img>` tags across post content, CPTs, and ACF WYSIWYG fields
+- CSV export and import for bulk manual updates
 
-## Changelog 
+## Changelog
 
-Version 1.2.0
-• Initial release
+### 1.2.0
+- Added bulk AI generation for all media library images missing alt tags
+- Added rate-limit protection with 500ms delay and automatic retry on 429 errors
+- Added content sync — alt tag saves now update matching `<img>` tags in post content, CPTs, and ACF WYSIWYG fields
+- Added manual bulk updates via CSV import
+- Added listener for media library changes
 
-Version 1.1.0 
-• Minor bump for the parent theme tab feature + the child-theme scanner bug fix
+### 1.1.0
+- Added parent theme tab and scan support
+- Fixed child-theme scanner bug
 
-Version 1.0.0
-• Initial release.
+### 1.0.0
+- Initial release

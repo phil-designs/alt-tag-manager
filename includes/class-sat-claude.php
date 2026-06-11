@@ -107,7 +107,8 @@ class SAT_Claude {
 		if ( is_wp_error( $response ) ) {
 			return new WP_Error(
 				'sat_request_failed',
-				sprintf( __( 'API request failed: %s', 'search-alt-tags' ), $response->get_error_message() )
+				/* translators: %s: error message returned by the Anthropic API */
+			sprintf( __( 'API request failed: %s', 'alt-tag-manager' ), $response->get_error_message() )
 			);
 		}
 
@@ -115,7 +116,7 @@ class SAT_Claude {
 		$body   = json_decode( wp_remote_retrieve_body( $response ), true );
 
 		if ( 200 !== $status ) {
-			$message = isset( $body['error']['message'] ) ? $body['error']['message'] : __( 'Unknown API error.', 'search-alt-tags' );
+			$message = isset( $body['error']['message'] ) ? $body['error']['message'] : __( 'Unknown API error.', 'alt-tag-manager' );
 			return new WP_Error( 'sat_api_error', sprintf( 'Claude API error (%d): %s', $status, $message ) );
 		}
 
@@ -127,7 +128,7 @@ class SAT_Claude {
 			}
 		}
 
-		return new WP_Error( 'sat_empty_response', __( 'Claude returned an empty response.', 'search-alt-tags' ) );
+		return new WP_Error( 'sat_empty_response', __( 'Claude returned an empty response.', 'alt-tag-manager' ) );
 	}
 
 	/**
